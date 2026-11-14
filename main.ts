@@ -83,7 +83,10 @@ function marketSpread(prices: number[]): number {
 }
 
 // One market's forecast: 240 rows, five quantiles per row, around its
-// last price, widening with sqrt(horizon minute).
+// last price, widening with sqrt(horizon minute). No drift term: on the
+// practice, a shrunk 1h or 4h trend and a pull toward a recent mean both
+// raised the pinball loss, so the median stays at the last price and
+// only the spread adapts per market.
 function forecastMarket(market: MarketInput, horizon: number): number[][] {
   if (market.prices.length === 0) {
     throw new Error(`market ${market.id} has no prices`);
@@ -93,6 +96,8 @@ function forecastMarket(market: MarketInput, horizon: number): number[][] {
   const rows: number[][] = [];
   for (let h = 1; h <= horizon; h++) {
     const width = spread * Math.sqrt(h);
+    // Each row is non-decreasing because NORMAL_Z is sorted ascending
+    // and toPrice is monotone; clamping at 0/1 can only flatten rows.
     rows.push(NORMAL_Z.map((z) => toPrice(last + z * width)));
   }
   return rows;
